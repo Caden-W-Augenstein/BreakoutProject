@@ -763,9 +763,9 @@ while game_state != "off":
                 message += f"{i + 1}:        {num}\n"
             message = message[:len(message) - 1]
             render_message(screen, "High Scores:", (screen_center_x, 100), 64)
-            render_message(screen, message, (screen_center_x, screen_center_y - 100), 32)
+            render_message(screen, message, (screen_center_x, screen_center_y - 150), 32)
             render_message(screen, "Press \"Space\" to go back.",
-                           (screen_center_x, screen_center_y + 300), 32)
+                           (screen_center_x, screen_center_y + 250), 32)
 
             if keys[pygame.K_SPACE]:
                 game_state = "title"
@@ -774,7 +774,7 @@ while game_state != "off":
             render_message(screen, "Welcome to Breakout", (screen_center_x, 50), 40)
             render_message(screen, info,
                            (screen_center_x, 120), 20)
-            render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 160), 32)
+            render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 250), 32)
 
             if keys[pygame.K_SPACE]:
                 game_state = "title"
