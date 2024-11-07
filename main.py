@@ -189,8 +189,6 @@ def spawn_powerup(x_pos, y_pos, speed):
 
             # increases the platform width
             platform.change_width(5)
-            if platform.width > 50:
-                platform.width = 50
 
             # if the platform width has increased beyond half of the screen's width, the platform's width is set to half
             # the screen width
@@ -344,6 +342,12 @@ def get_render_bricks(placeholders):
     return res
 
 
+def loop_music(path: str):
+    pygame.mixer.music.unload()
+    pygame.mixer.music.load(path)
+    pygame.mixer.music.play(-1)
+
+
 # entity info
 #########################################################
 block_width = screen_dimensions[0] / 8
@@ -367,7 +371,14 @@ max_round_score = current_round * 8
 current_color = 0
 #########################################################
 
+# sounds
+#########################################################
+brick_impact = pygame.mixer.Sound("SoundFiles/brick-impact.wav")
+platform_impact = pygame.mixer.Sound("SoundFiles/platform-impact.wav")
+#########################################################
+
 # game state booleans to determine what chunk of code to run
+loop_music("SoundFiles/menu-background.wav")
 game_state = "title"
 endless = False
 custom = False
@@ -564,10 +575,12 @@ while game_state != "off":
             for ball in balls:
                 ball.update_pos()
                 if ball.rect.colliderect(platform.rect):
+                    platform_impact.play()
                     ball.handle_rect_bounce(platform.rect, "platform")
                 collided = False
                 for brick in bricks:
                     if brick[0].colliderect(ball.rect):
+                        brick_impact.play()
                         collided = True
                         spawn_powerup(platform.rect.centerx, platform.rect.centery, ball_speed)
                         ball.handle_rect_bounce(brick[0])
@@ -635,19 +648,24 @@ while game_state != "off":
 
             render_message(screen, "Select a mode", (screen_center_x, 100), 64)
             custom_levels_rect = render_image(screen, "assets/Custom-Levels.png",
-                                              (screen_center_x, screen_center_y - 50), (200, 50)).get_rect()
-            custom_levels_rect.center = (screen_center_x, screen_center_y - 50)
+                                              (screen_center_x, screen_center_y + 50), (200, 50)).get_rect()
+            custom_levels_rect.center = (screen_center_x, screen_center_y + 50)
 
             normal_levels_rect = render_image(screen, "assets/Normal-Levels.png",
-                                              (screen_center_x, screen_center_y + 50), (200, 50)).get_rect()
-            normal_levels_rect.center = (screen_center_x, screen_center_y + 50)
+                                              (screen_center_x, screen_center_y - 50), (200, 50)).get_rect()
+            normal_levels_rect.center = (screen_center_x, screen_center_y - 50)
+            render_message(screen, "Press \"Space\" to go to title", (screen_center_x, screen_center_y + 250), 32)
 
+            if keys[pygame.K_SPACE]:
+                game_state = "title"
             if custom_levels_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+                loop_music("SoundFiles/level-background.mp3")
                 game_state = "pre round"
                 custom = True
                 bricks = level_spawn_bricks(current_round, custom)
                 max_round_score = len(bricks)
             if normal_levels_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+                loop_music("SoundFiles/level-background.mp3")
                 game_state = "pre round"
                 custom = False
                 bricks = level_spawn_bricks(current_round, custom)
@@ -669,6 +687,7 @@ while game_state != "off":
             if keys[pygame.K_SPACE]:
                 balls = [balls[0]]
                 game_state = "title"
+                loop_music("SoundFiles/menu-background.wav")
 
         case "title":  # events if the player is on the title screen
             mouse_pos = pygame.mouse.get_pos()
@@ -711,6 +730,7 @@ while game_state != "off":
                 current_round = 1
                 endless = False
             if play_endless_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+                loop_music("SoundFiles/level-background.mp3")
                 game_state = "pre round"
                 bricks = random_spawn_bricks()
                 score = 0
@@ -732,6 +752,7 @@ while game_state != "off":
             render_message(screen, f"YOU {game_state[:4].upper()}", screen_center, 64)
             render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 50), 32)
             if keys[pygame.K_SPACE]:
+                loop_music("SoundFiles/menu-background.wav")
                 game_state = "title"
                 balls = [Ball(0, 0, 0, 0), ]
 
