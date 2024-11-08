@@ -14,7 +14,10 @@ screen = pygame.display.set_mode(screen_dimensions)
 clock = pygame.time.Clock()
 
 # default object values
-powerup_chance = 4      # out of ten
+bricks = []
+block_width = screen_dimensions[0] / 8
+block_height = block_width / 3
+powerup_chance = 4  # out of ten
 max_level_height = 24
 ball_radius = 8
 powerup_choices = ["extra ball", "long platform"]
@@ -175,14 +178,12 @@ class Platform:
 # Takes the coordinates of the platform and decides whether to spawn a powerup using the random module. "long platform"
 # will increase the platform width, and "extra "ball" will spawn another ball at the platforms location
 def spawn_powerup(x_pos, y_pos, speed):
-
     # determines whether to spawn powerup
     if random.randint(0, 10) > 10 - powerup_chance:
 
         # randomly chooses which powerup from "powerup_choices" to spawn
         choice = random.choice(powerup_choices)
         if choice == "extra ball":
-
             # adds a ball to the game at the platform's position
             balls.append(Ball(x_pos, y_pos - platform.height / 2 - ball_radius, 0, -speed))
         if choice == "long platform":
@@ -238,7 +239,6 @@ def add_high_score(added_score: int):
 # spawns the bricks associated with each level normal or custom and adds the rect objects and colors to the "bricks"
 # array
 def level_spawn_bricks(round_num, is_custom):
-
     # determines whether the level is custom or normal and gets the text from the file
     if is_custom:
         inter = "Custom"
@@ -286,7 +286,6 @@ def random_spawn_bricks():
 # displays a string on the screen. for every "\n" in the "msg", the display will display teh rest of the text on the
 # next line.
 def render_message(surface: pygame.surface, msg: str, position: [int, int], font_size: int):
-
     # fills the "splits" array with each chunk of text in between "\n" characters
     splits = []
     temp = 0
@@ -350,11 +349,8 @@ def loop_music(path: str):
 
 # entity info
 #########################################################
-block_width = screen_dimensions[0] / 8
-block_height = block_width / 3
 ball_speed = 6
 balls = [Ball(0, 0, 0, 0), ]
-bricks = []
 platform = Platform(175, screen_dimensions[1] * 15 / 16,
                     default_platform_dimensions[0], default_platform_dimensions[1],
                     platform_speed)
@@ -375,6 +371,7 @@ current_color = 0
 #########################################################
 brick_impact = pygame.mixer.Sound("SoundFiles/brick-impact.wav")
 platform_impact = pygame.mixer.Sound("SoundFiles/platform-impact.wav")
+win = pygame.mixer.Sound("SoundFiles/win.wav")
 #########################################################
 
 # game state booleans to determine what chunk of code to run
@@ -407,7 +404,7 @@ while game_state != "off":
 
             # displays intermediate screen where the user can decide which custom level to edit
             if selecting_level_to_edit:
-                render_message(screen, "Select a level to edit by pressing the\nnumber keys.", screen_center, 32)
+                render_message(screen, "Choose a level to edit (1-10) by\npressing the number keys.", screen_center, 32)
                 render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 75), 32)
 
                 if keys[pygame.K_SPACE]:
@@ -605,7 +602,9 @@ while game_state != "off":
 
                 balls = [balls[0]]
                 if current_round > 10:
+                    win.play()
                     game_state = "win screen"
+                    pygame.mixer.music.unload()
                 else:
                     if endless:
                         bricks = random_spawn_bricks()
@@ -625,6 +624,7 @@ while game_state != "off":
             render_message(screen, f"Score: {total_score}", (100, screen_dimensions[1] - 15), 32)
 
         case "pre round":
+            render_message(screen, "Press \"Space\" to to launch ball.", (screen_center_x, screen_center_y + 45), 32)
             render_message(screen, f"Score: {total_score}", (100, screen_dimensions[1] - 15), 32)
 
             platform.player_move(keys)
@@ -670,7 +670,7 @@ while game_state != "off":
                 custom = False
                 bricks = level_spawn_bricks(current_round, custom)
 
-        case "paused":   # events if the game has been paused
+        case "paused":  # events if the game has been paused
             platform.draw(screen)
             for ball in balls:
                 ball.draw(screen)
@@ -688,6 +688,7 @@ while game_state != "off":
                 balls = [balls[0]]
                 game_state = "title"
                 loop_music("SoundFiles/menu-background.wav")
+                platform.reset()
 
         case "title":  # events if the player is on the title screen
             mouse_pos = pygame.mouse.get_pos()
@@ -713,7 +714,7 @@ while game_state != "off":
             high_scores_rect.center = (screen_center_x, screen_center_y + 90)
 
             info_rect = render_image(screen, "assets/Info.png",
-                                     (screen_center_x, screen_center_y + 160),(200, 50)).get_rect()
+                                     (screen_center_x, screen_center_y + 160), (200, 50)).get_rect()
             info_rect.center = (screen_center_x, screen_center_y + 160)
 
             quit_rect = render_image(screen, "assets/Quit.png", (screen_center_x, screen_center_y + 230),
