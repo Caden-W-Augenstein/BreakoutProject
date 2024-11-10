@@ -174,6 +174,7 @@ class Platform:
         pygame.draw.rect(surface, self.color, self.rect)
 
 
+# returns -1 if the parameter number is negative, 0 if it is 0, and 1 if it is positive
 def normalize(num):
     if num > 0:
         return 1
@@ -183,11 +184,16 @@ def normalize(num):
         return 0
 
 
+# returns an array of 1's and 0's that correspond to the parameter arrays. A 1 at the nth index means that the element
+# of the nth index of arr1 and arr2 are not the same and a 0 at the nth index means that the elements of the nth
+# index of arr1 and arr2 are the same
 def distance_arr(arr1, arr2):
     res = [0 if arr1[i] == arr2[i] else 1 for i in range(len(arr1))]
     return res
 
 
+# returns the "distance" between 2 arrays (the number of indices where the elements of each array at said indices are
+# dissimilar)
 def distance(arr1, arr2):
     res = 0
     for i in range(len(arr1)):
@@ -196,6 +202,8 @@ def distance(arr1, arr2):
     return res
 
 
+# takes ball and brick objects and calculates and returns the appropriate velocity for the ball.
+# meant to make the ball bounce off of platforms and bricks
 def get_new_vel(ball, norm_cords, rect, object_hit):
     if object_hit == "platform":
         ratio = (rect.left - ball.x) / rect.width * math.pi
@@ -471,10 +479,19 @@ endless = False
 custom = False
 selecting_level_to_edit = False
 high_score = False
+clicked = False
+can_click = True
 while game_state != "off":
+    clicked = False
+    if pygame.mouse.get_pressed(3)[0]:
+        if can_click:
+            clicked = True
+            can_click = False
+    else:
+        can_click = True
+        clicked = False
 
-    # code that runs as long as the game is still running
-    #########################################################
+    mouse_pos = pygame.mouse.get_pos()
     keys = pygame.key.get_pressed()
     screen.fill((0, 0, 0))
 
@@ -484,21 +501,20 @@ while game_state != "off":
             game_state = "off"
     if keys[pygame.K_ESCAPE]:
         game_state = "off"
-    #########################################################
 
     # events if a game has started
     match game_state:
         case "level creator":
-            # gets mouse info
-            mouse_pos = pygame.mouse.get_pos()
-            mouse_pressed = pygame.mouse.get_pressed(3)
-
             # displays intermediate screen where the user can decide which custom level to edit
             if selecting_level_to_edit:
-                render_message(screen, "Choose a level to edit (1-10) by\npressing the number keys.", screen_center, 32)
-                render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 75), 32)
+                render_message(screen, "Choose a level to edit (1-10) by\npressing the number keys.",
+                               (screen_center_x, screen_center_y - 0), 32)
 
-                if keys[pygame.K_SPACE]:
+                exit_level_creator_rect = render_image(screen, "assets/Exit.png",
+                                                       (screen_center_x, 600), (200, 50)).get_rect()
+                exit_level_creator_rect.center = (screen_center_x, 600)
+
+                if exit_level_creator_rect.collidepoint(mouse_pos) and clicked:
                     game_state = "title"
 
                 # When the user presses a number key, begins editing the custom level associated with it
@@ -640,7 +656,7 @@ while game_state != "off":
 
                 # if the user has clicked within the placement area, a brick is created with the current color at the
                 # location of the click
-                if mouse_pressed[0] and place_rect.collidepoint(mouse_pos):
+                if clicked and place_rect.collidepoint(mouse_pos):
                     x = int(mouse_pos[0] // block_width)
                     y = int(mouse_pos[1] // block_height)
 
@@ -739,8 +755,7 @@ while game_state != "off":
                 pygame.draw.rect(screen, brick[1], brick[0])
 
         case "level select":
-            mouse_pos = pygame.mouse.get_pos()
-            mouse_pressed = pygame.mouse.get_pressed(3)
+
 
             render_message(screen, "Select a mode", (screen_center_x, 100), 64)
             custom_levels_rect = render_image(screen, "assets/Custom-Levels.png",
@@ -750,17 +765,20 @@ while game_state != "off":
             normal_levels_rect = render_image(screen, "assets/Normal-Levels.png",
                                               (screen_center_x, screen_center_y - 50), (200, 50)).get_rect()
             normal_levels_rect.center = (screen_center_x, screen_center_y - 50)
-            render_message(screen, "Press \"Space\" to go to title", (screen_center_x, screen_center_y + 250), 32)
 
-            if keys[pygame.K_SPACE]:
+            exit_level_select_rect = render_image(screen, "assets/Exit.png",
+                                              (screen_center_x, 600), (200, 50)).get_rect()
+            exit_level_select_rect.center = (screen_center_x, 600)
+
+            if exit_level_select_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "title"
-            if custom_levels_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            if custom_levels_rect.collidepoint(mouse_pos) and clicked:
                 loop_music("SoundFiles/level-background.mp3")
                 game_state = "pre round"
                 custom = True
                 bricks = level_spawn_bricks(current_round, custom)
                 max_round_score = len(bricks)
-            if normal_levels_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            if normal_levels_rect.collidepoint(mouse_pos) and clicked:
                 loop_music("SoundFiles/level-background.mp3")
                 game_state = "pre round"
                 custom = False
@@ -787,8 +805,6 @@ while game_state != "off":
                 platform.reset()
 
         case "title":  # events if the player is on the title screen
-            mouse_pos = pygame.mouse.get_pos()
-            mouse_pressed = pygame.mouse.get_pressed(3)
 
             render_image(screen, "assets/title-screen.png", (screen_center_x + 70, screen_center_y + 110),
                          screen_dimensions)
@@ -820,13 +836,13 @@ while game_state != "off":
             render_message(screen, "Atari Breakout", [screen_center_x, 100], 64)
 
             # Detects if the player has hit any of the buttons and if so, switches the game state
-            if play_levels_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            if play_levels_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "level select"
                 score = 0
                 total_score = 0
                 current_round = 1
                 endless = False
-            if play_endless_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            if play_endless_rect.collidepoint(mouse_pos) and clicked:
                 loop_music("SoundFiles/level-background.mp3")
                 game_state = "pre round"
                 bricks = random_spawn_bricks()
@@ -835,30 +851,33 @@ while game_state != "off":
                 current_round = 1
                 max_round_score = len(bricks)
                 endless = True
-            if high_scores_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            if high_scores_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "leaderboard"
-            if info_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            if info_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "info"
-            if quit_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            if quit_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "off"
-            if level_creator_rect.collidepoint(mouse_pos) and mouse_pressed[0]:
+            if level_creator_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "level creator"
                 selecting_level_to_edit = True
 
         case "win screen" | "lose screen":
-            if endless:
-                render_message(screen, "GAME OVER", screen_center, 64)
-                if high_score:
-                    render_message(screen, f"High score of {total_score}!", (screen_center[0], screen_center[1] + 60), 64)
-                render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 120), 32)
-            else:
-                render_message(screen, f"YOU {game_state[:4].upper()}", screen_center, 64)
-                render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 50), 32)
-            if keys[pygame.K_SPACE]:
+            exit_game_end_rect = render_image(screen, "assets/Exit.png",
+                                              (screen_center_x, 600), (200, 50)).get_rect()
+            exit_game_end_rect.center = (screen_center_x, 600)
+
+            if exit_game_end_rect.collidepoint(mouse_pos) and clicked:
                 platform.reset()
                 loop_music("SoundFiles/menu-background.wav")
                 game_state = "title"
                 balls = [Ball(0, 0, 0, 0), ]
+
+            if endless:
+                render_message(screen, "GAME OVER", screen_center, 64)
+                if high_score:
+                    render_message(screen, f"High score of {total_score}!", (screen_center[0], screen_center[1] + 60), 64)
+            else:
+                render_message(screen, f"YOU {game_state[:4].upper()}", screen_center, 64)
 
         case "leaderboard":
             scores = add_high_score(-1)
@@ -868,19 +887,23 @@ while game_state != "off":
             message = message[:len(message) - 1]
             render_message(screen, "High Scores:", (screen_center_x, 100), 64)
             render_message(screen, message, (screen_center_x, screen_center_y - 150), 32)
-            render_message(screen, "Press \"Space\" to go back.",
-                           (screen_center_x, screen_center_y + 250), 32)
 
-            if keys[pygame.K_SPACE]:
+            exit_leaderboard_rect = render_image(screen, "assets/Exit.png",
+                                              (screen_center_x, 600), (200, 50)).get_rect()
+            exit_leaderboard_rect.center = (screen_center_x, 600)
+
+            if exit_leaderboard_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "title"
 
         case "info":
-            render_message(screen, "Welcome to Breakout", (screen_center_x, 50), 40)
-            render_message(screen, info,
-                           (screen_center_x, 120), 20)
-            render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 250), 32)
+            render_message(screen, "How to play.", (screen_center_x, 100), 64)
+            render_message(screen, info,(screen_center_x, 160), 20)
 
-            if keys[pygame.K_SPACE]:
+            exit_info_rect = render_image(screen, "assets/Exit.png",
+                                          (screen_center_x, 600), (200, 50)).get_rect()
+            exit_info_rect.center = (screen_center_x, 600)
+
+            if exit_info_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "title"
 
     pygame.display.flip()
