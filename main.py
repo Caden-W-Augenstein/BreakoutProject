@@ -878,7 +878,7 @@ while game_state != "off":
                 render_message(screen, f"YOU {game_state[:4].upper()}", screen_center, 64)
 
         case "leaderboard":
-            # retrives scores from the "Endless-High_Scores" file and displays them on the screen
+            # gets scores from the "Endless-High_Scores" file and displays them on the screen
             #########################################################
             scores = add_high_score(-1)
             message = ""
