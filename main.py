@@ -638,7 +638,7 @@ while game_state != "off":
 
                 # if the user has clicked within the placement area, a brick is created with the current color at the
                 # location of the click
-                if clicked and place_rect.collidepoint(mouse_pos):
+                if pygame.mouse.get_pressed(3)[0] and place_rect.collidepoint(mouse_pos):
                     x = int(mouse_pos[0] // block_width)
                     y = int(mouse_pos[1] // block_height)
 
