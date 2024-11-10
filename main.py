@@ -57,34 +57,34 @@ class Ball:
     # uses imaginary linear functions that represent the diagonals of the rectangle and determines the position of the
     # ball relative to these functions in order to determine which way the ball should bounce
     def handle_rect_bounce(self, rect, object_hit="brick"):
+        if self.x < rect.centerx:  # ball left of brick
 
-        # determines what object has been hit to deal with the bounce
-        if object_hit == "platform":
-            ratio = (rect.left - self.x) / rect.width * math.pi
-            self.x_vel = -math.cos(ratio) * 2
+            if self.y < rect.centery:  # ball to the top left of brick
+                normalized_coordinates = [-1, -1]
 
-        # sets the slopes of each linear function
-        m_upper = rect.height / rect.width
-        m_lower = -m_upper
+                new_vel = get_new_vel(self, normalized_coordinates, rect, object_hit)
 
-        # sets booleans that show where the ball is relative to the diagonals
-        above_up_line = self.y <= m_upper * (self.x - rect.centerx) + rect.centery
-        above_down_line = self.y <= m_lower * (self.x - rect.centerx) + rect.centery
+                self.x_vel, self.y_vel = new_vel[0], new_vel[1]
+            else:  # ball to the bottom left of brick
+                normalized_coordinates = [-1, 1]
 
-        if above_up_line:
-            if above_down_line:     # bounces the ball up
-                self.set_pos(self.x, rect.top - ball_radius)
-                self.y_vel *= -1
-            else:                   # bounces the ball right
-                self.set_pos(rect.right + ball_radius, self.y)
-                self.x_vel *= -1
-        else:
-            if above_down_line:     # bounces the ball down
-                self.set_pos(rect.left - ball_radius, self.y)
-                self.x_vel *= -1
-            else:                   # bounces the ball left
-                self.set_pos(self.x, rect.bottom + ball_radius)
-                self.y_vel *= -1
+                new_vel = get_new_vel(self, normalized_coordinates, rect, object_hit)
+
+                self.x_vel, self.y_vel = new_vel[0], new_vel[1]
+        else:  # ball right of brick
+
+            if self.y < rect.centery:  # ball to the top right of brick
+                normalized_coordinates = [1, -1]
+
+                new_vel = get_new_vel(self, normalized_coordinates, rect, object_hit)
+
+                self.x_vel, self.y_vel = new_vel[0], new_vel[1]
+            else:  # ball to the bottom right of brick
+                normalized_coordinates = [1, 1]
+
+                new_vel = get_new_vel(self, normalized_coordinates, rect, object_hit)
+
+                self.x_vel, self.y_vel = new_vel[0], new_vel[1]
 
     def get_position(self):
         return [self.x, self.y]
@@ -138,7 +138,6 @@ class Platform:
         self.y = y
         self.width = width
         self.height = height
-        self.speed = speed
         self.color = color
         self.rect = pygame.Rect(x, y, width, height)
 
@@ -146,7 +145,7 @@ class Platform:
     def reset(self):
         self.set_width(50)
         self.x = 175
-        self.speed = 5
+        self.rect.centerx = screen_center_x
 
     def change_width(self, inc):
         self.rect.width += inc
@@ -159,11 +158,11 @@ class Platform:
     # takes the player's inputs and moves the platform accordingly
     def player_move(self, inputs):
         if inputs[pygame.K_a] or inputs[pygame.K_LEFT]:
-            self.x -= self.speed
-            self.rect = self.rect.move(-self.speed, 0)
+            self.x -= platform_speed
+            self.rect = self.rect.move(-platform_speed, 0)
         if inputs[pygame.K_d] or inputs[pygame.K_RIGHT]:
-            self.x += self.speed
-            self.rect = self.rect.move(self.speed, 0)
+            self.x += platform_speed
+            self.rect = self.rect.move(platform_speed, 0)
 
         if self.rect.right > screen_dimensions[0]:
             self.rect.right = screen_dimensions[0]
@@ -173,6 +172,97 @@ class Platform:
     # draws the platform on the screen
     def draw(self, surface: pygame.Surface):
         pygame.draw.rect(surface, self.color, self.rect)
+
+
+def normalize(num):
+    if num > 0:
+        return 1
+    elif num < 0:
+        return -1
+    else:
+        return 0
+
+
+def distance_arr(arr1, arr2):
+    res = [0 if arr1[i] == arr2[i] else 1 for i in range(len(arr1))]
+    return res
+
+
+def distance(arr1, arr2):
+    res = 0
+    for i in range(len(arr1)):
+        if arr1[i] != arr2[i]:
+            res += 1
+    return res
+
+
+def get_new_vel(ball, norm_cords, rect, object_hit):
+    if object_hit == "platform":
+        ratio = (rect.left - ball.x) / rect.width * math.pi
+        ball.x_vel = -math.cos(ratio) * 2
+    norm_vel_cords = [normalize(ball.x_vel), normalize(ball.y_vel)]
+    dist = distance(norm_vel_cords, norm_cords)
+    dist_arr = distance_arr(norm_vel_cords, norm_cords)
+    match dist:
+        case 0:
+            if norm_cords[0] == -1:
+                ball.set_pos(rect.left - ball_radius, ball.y)
+            else:
+                ball.set_pos(rect.right + ball_radius, ball.y)
+            return [norm_vel_cords[0] * abs(ball.x_vel), ball.y_vel]
+        case 1:
+            if dist_arr[0] == 1:
+                if norm_cords[0] == -1:
+                    ball.set_pos(rect.left - ball_radius, ball.y)
+                else:
+                    ball.set_pos(rect.right + ball_radius, ball.y)
+                return [-norm_vel_cords[0] * abs(ball.x_vel), ball.y_vel]
+            else:
+                if norm_cords[1] == -1:
+                    ball.set_pos(ball.x, rect.top - ball_radius)
+                else:
+                    ball.set_pos(ball.x, rect.bottom + ball_radius)
+                return [ball.x_vel, -norm_vel_cords[1] * abs(ball.y_vel)]
+        case 2:
+            if abs(ball.x_vel) > .1:
+                m = ball.y_vel / ball.x_vel
+            else:
+                if norm_vel_cords[1] == 1:
+                    ball.set_pos(ball.x, rect.top - ball_radius)
+                    return [ball.x_vel, -abs(ball.y_vel)]
+                else:
+                    ball.set_pos(ball.x, rect.bottom + ball_radius)
+                    return [ball.x_vel, abs(ball.y_vel)]
+
+            match norm_vel_cords:
+                case [1, 1]:
+                    if m * (rect.left - ball.x) + ball.y > rect.top:
+                        ball.set_pos(rect.left - ball_radius, ball.y)
+                        return [-abs(ball.x_vel), ball.y_vel]
+                    else:
+                        ball.set_pos(ball.x, rect.top - ball_radius)
+                        return [ball.x_vel, -abs(ball.y_vel)]
+                case [-1, 1]:
+                    if m * (rect.right - ball.x) + ball.y < rect.top:
+                        ball.set_pos(ball.x, rect.top - ball_radius)
+                        return [ball.x_vel, -abs(ball.y_vel)]
+                    else:
+                        ball.set_pos(rect.right + ball_radius, ball.y)
+                        return [abs(ball.x_vel), ball.y_vel]
+                case [1, -1]:
+                    if m * (rect.left - ball.x) + ball.y > rect.bottom:
+                        ball.set_pos(ball.x, rect.bottom + ball_radius)
+                        return [ball.x_vel, abs(ball.y_vel)]
+                    else:
+                        ball.set_pos(rect.left - ball_radius, ball.y)
+                        return [-abs(ball.x_vel), ball.y_vel]
+                case [-1, -1]:
+                    if m * (rect.right - ball.x) + ball.y > rect.bottom:
+                        ball.set_pos(ball.x, rect.bottom + ball_radius)
+                        return [ball.x_vel, abs(ball.y_vel)]
+                    else:
+                        ball.set_pos(rect.right + ball_radius, ball.y)
+                        return [abs(ball.x_vel), ball.y_vel]
 
 
 # Takes the coordinates of the platform and decides whether to spawn a powerup using the random module. "long platform"
@@ -380,6 +470,7 @@ game_state = "title"
 endless = False
 custom = False
 selecting_level_to_edit = False
+high_score = False
 while game_state != "off":
 
     # code that runs as long as the game is still running
@@ -617,7 +708,12 @@ while game_state != "off":
                         max_round_score = len(bricks)
 
             if len(balls) == 0:
-                add_high_score(total_score)
+                if endless:
+                    scores = add_high_score(total_score)
+                    if total_score in scores:
+                        high_score = True
+                    else:
+                        high_score = False
                 game_state = "lose screen"
 
             platform.draw(screen)
@@ -750,9 +846,16 @@ while game_state != "off":
                 selecting_level_to_edit = True
 
         case "win screen" | "lose screen":
-            render_message(screen, f"YOU {game_state[:4].upper()}", screen_center, 64)
-            render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 50), 32)
+            if endless:
+                render_message(screen, "GAME OVER", screen_center, 64)
+                if high_score:
+                    render_message(screen, f"High score of {total_score}!", (screen_center[0], screen_center[1] + 60), 64)
+                render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 120), 32)
+            else:
+                render_message(screen, f"YOU {game_state[:4].upper()}", screen_center, 64)
+                render_message(screen, "Press \"Space\" to go back.", (screen_center_x, screen_center_y + 50), 32)
             if keys[pygame.K_SPACE]:
+                platform.reset()
                 loop_music("SoundFiles/menu-background.wav")
                 game_state = "title"
                 balls = [Ball(0, 0, 0, 0), ]
