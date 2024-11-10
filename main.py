@@ -5,7 +5,7 @@ import pygame
 
 pygame.init()
 
-# pygame stuff
+# pygame variables
 screen_dimensions = (400, 750)
 screen_center = (screen_dimensions[0] / 2, screen_dimensions[1] / 2)
 screen_center_x = screen_center[0]
@@ -31,13 +31,13 @@ info = ("In this game, you control a paddle which can move\n"
         "If you run out of balls, you lose. However, you will\n"
         "occasionally get powerups to help you when you hit a brick\n"
         "such as getting an extra ball or having your platform\n"
-        "expanded.You can either play levels mode which will pit you\n"
-        "against 10 levels of bricks with increasing difficulty, or you\n"
-        "can play endless mode with randomly generating bricks and\n"
-        "try to get as far as possible. You can also choose to create\n"
-        "and play your own levels using the \"Level Creator\". The\n"
-        "\"High Scores\" option will show the leaderboard for endless\n"
-        "mode.")
+        "expanded. You can pause the level by pressing \"p\". You can \n"
+        "either play normal mode which will pit you against 10 levels\n"
+        "of bricks with increasing difficulty, or you can play endless\n"
+        "mode with randomly generating bricks and try to get as far as\n"
+        "possible. You can also choose to create and play your own\n"
+        "levels using the \"Level Creator\". The \"High Scores\" option\n"
+        "will show the leaderboard for endless mode.")
 
 
 class Ball:
@@ -54,40 +54,33 @@ class Ball:
             self.color = color
 
     # handles the collision of the ball against a rectangle on the screen and decides how to bounce the ball.
-    # uses imaginary linear functions that represent the diagonals of the rectangle and determines the position of the
-    # ball relative to these functions in order to determine which way the ball should bounce
     def handle_rect_bounce(self, rect, object_hit="brick"):
+
+        # Sets velocity based on which side of the brick the ball has hit
         if self.x < rect.centerx:  # ball left of brick
 
             if self.y < rect.centery:  # ball to the top left of brick
-                normalized_coordinates = [-1, -1]
 
-                new_vel = get_new_vel(self, normalized_coordinates, rect, object_hit)
+                new_vel = get_new_vel(self, [-1, -1], rect, object_hit)
 
                 self.x_vel, self.y_vel = new_vel[0], new_vel[1]
             else:  # ball to the bottom left of brick
-                normalized_coordinates = [-1, 1]
 
-                new_vel = get_new_vel(self, normalized_coordinates, rect, object_hit)
+                new_vel = get_new_vel(self, [-1, 1], rect, object_hit)
 
                 self.x_vel, self.y_vel = new_vel[0], new_vel[1]
         else:  # ball right of brick
 
             if self.y < rect.centery:  # ball to the top right of brick
-                normalized_coordinates = [1, -1]
 
-                new_vel = get_new_vel(self, normalized_coordinates, rect, object_hit)
+                new_vel = get_new_vel(self, [1, -1], rect, object_hit)
 
                 self.x_vel, self.y_vel = new_vel[0], new_vel[1]
             else:  # ball to the bottom right of brick
-                normalized_coordinates = [1, 1]
 
-                new_vel = get_new_vel(self, normalized_coordinates, rect, object_hit)
+                new_vel = get_new_vel(self, [1, 1], rect, object_hit)
 
                 self.x_vel, self.y_vel = new_vel[0], new_vel[1]
-
-    def get_position(self):
-        return [self.x, self.y]
 
     def set_pos(self, x, y):
         self.x = x
@@ -128,7 +121,7 @@ class Ball:
 
     # draws the ball on the screen
     def draw(self, surface: pygame.Surface):
-        pygame.draw.circle(surface, self.color, self.get_position(), ball_radius)
+        pygame.draw.circle(surface, self.color, [self.x, self.y], ball_radius)
 
 
 class Platform:
@@ -184,24 +177,6 @@ def normalize(num):
         return 0
 
 
-# returns an array of 1's and 0's that correspond to the parameter arrays. A 1 at the nth index means that the element
-# of the nth index of arr1 and arr2 are not the same and a 0 at the nth index means that the elements of the nth
-# index of arr1 and arr2 are the same
-def distance_arr(arr1, arr2):
-    res = [0 if arr1[i] == arr2[i] else 1 for i in range(len(arr1))]
-    return res
-
-
-# returns the "distance" between 2 arrays (the number of indices where the elements of each array at said indices are
-# dissimilar)
-def distance(arr1, arr2):
-    res = 0
-    for i in range(len(arr1)):
-        if arr1[i] != arr2[i]:
-            res += 1
-    return res
-
-
 # takes ball and brick objects and calculates and returns the appropriate velocity for the ball.
 # meant to make the ball bounce off of platforms and bricks
 def get_new_vel(ball, norm_cords, rect, object_hit):
@@ -209,8 +184,11 @@ def get_new_vel(ball, norm_cords, rect, object_hit):
         ratio = (rect.left - ball.x) / rect.width * math.pi
         ball.x_vel = -math.cos(ratio) * 2
     norm_vel_cords = [normalize(ball.x_vel), normalize(ball.y_vel)]
-    dist = distance(norm_vel_cords, norm_cords)
-    dist_arr = distance_arr(norm_vel_cords, norm_cords)
+    dist = 0
+    for i in range(len(norm_vel_cords)):
+        if norm_vel_cords[i] != norm_cords[i]:
+            dist += 1
+    dist_arr = [0 if norm_vel_cords[i] == norm_cords[i] else 1 for i in range(len(norm_cords))]
     match dist:
         case 0:
             if norm_cords[0] == -1:
@@ -287,7 +265,8 @@ def spawn_powerup(x_pos, y_pos, speed):
         if choice == "long platform":
 
             # increases the platform width
-            platform.change_width(5)
+            platform.rect.width += 5
+            platform.width += 5
 
             # if the platform width has increased beyond half of the screen's width, the platform's width is set to half
             # the screen width
@@ -479,8 +458,8 @@ endless = False
 custom = False
 selecting_level_to_edit = False
 high_score = False
-clicked = False
 can_click = True
+
 while game_state != "off":
     clicked = False
     if pygame.mouse.get_pressed(3)[0]:
@@ -518,6 +497,7 @@ while game_state != "off":
                     game_state = "title"
 
                 # When the user presses a number key, begins editing the custom level associated with it
+                #########################################################
                 if keys[pygame.K_1]:
                     selecting_level_to_edit = False
                     editing_level = 1
@@ -568,6 +548,7 @@ while game_state != "off":
                     editing_level = 10
                     edit_brick_placeholders = get_edit_brick_placeholders(10)
                     render_bricks = get_render_bricks(edit_brick_placeholders)
+                #########################################################
 
             else:
                 # establishes the lowest y level at which bricks can be placed
@@ -637,6 +618,7 @@ while game_state != "off":
                     render_bricks = []
                     edit_brick_placeholders = [["e" for i in range(max_level_height)] for j in range(8)]
 
+                # returns to level edit selection without saving if the user presses "Enter"
                 if keys[pygame.K_RETURN]:
                     selecting_level_to_edit = True
 
@@ -675,6 +657,8 @@ while game_state != "off":
             if keys[pygame.K_p]:
                 game_state = "paused"
 
+            # updates ball and platform positions, handles collisions, and draws objects on screen
+            #########################################################
             platform.player_move(keys)
             for ball in balls:
                 ball.update_pos()
@@ -700,7 +684,11 @@ while game_state != "off":
                     balls.remove(ball)
                 else:
                     ball.draw(screen)
+            platform.draw(screen)
+            #########################################################
 
+            # progresses level
+            #########################################################
             if score >= max_round_score:
                 platform.reset()
                 score = 0
@@ -722,7 +710,9 @@ while game_state != "off":
                     else:
                         bricks = level_spawn_bricks(current_round, custom)
                         max_round_score = len(bricks)
+            #########################################################
 
+            # player loses game if there are no more balls
             if len(balls) == 0:
                 if endless:
                     scores = add_high_score(total_score)
@@ -732,10 +722,10 @@ while game_state != "off":
                         high_score = False
                 game_state = "lose screen"
 
-            platform.draw(screen)
+            # displays score
             render_message(screen, f"Score: {total_score}", (100, screen_dimensions[1] - 15), 32)
 
-        case "pre round":
+        case "pre round":   # allows the user to move the platform and launch the ball to start the round
             render_message(screen, "Press \"Space\" to to launch ball.", (screen_center_x, screen_center_y + 45), 32)
             render_message(screen, f"Score: {total_score}", (100, screen_dimensions[1] - 15), 32)
 
@@ -744,6 +734,7 @@ while game_state != "off":
             balls[0].x = platform.rect.centerx
             balls[0].y = platform.rect.top - ball_radius
 
+            # launches the ball when the user presses space
             if keys[pygame.K_SPACE]:
                 game_state = "round running"
                 balls[0].x_vel = 0
@@ -755,8 +746,8 @@ while game_state != "off":
                 pygame.draw.rect(screen, brick[1], brick[0])
 
         case "level select":
-
-
+            # displays buttons and positions rect objects to detect when the buttons are clicked
+            #########################################################
             render_message(screen, "Select a mode", (screen_center_x, 100), 64)
             custom_levels_rect = render_image(screen, "assets/Custom-Levels.png",
                                               (screen_center_x, screen_center_y + 50), (200, 50)).get_rect()
@@ -769,7 +760,10 @@ while game_state != "off":
             exit_level_select_rect = render_image(screen, "assets/Exit.png",
                                               (screen_center_x, 600), (200, 50)).get_rect()
             exit_level_select_rect.center = (screen_center_x, 600)
+            #########################################################
 
+            # switches the game state based on which (if any) button the user presses
+            #########################################################
             if exit_level_select_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "title"
             if custom_levels_rect.collidepoint(mouse_pos) and clicked:
@@ -783,12 +777,12 @@ while game_state != "off":
                 game_state = "pre round"
                 custom = False
                 bricks = level_spawn_bricks(current_round, custom)
+            #########################################################
 
-        case "paused":  # events if the game has been paused
+        case "paused":
             platform.draw(screen)
             for ball in balls:
                 ball.draw(screen)
-
             for brick in bricks:
                 pygame.draw.rect(screen, brick[1], brick[0])
 
@@ -806,9 +800,10 @@ while game_state != "off":
 
         case "title":  # events if the player is on the title screen
 
+            # renders buttons and images and positions rect objects to detect when a button is pressed
+            #########################################################
             render_image(screen, "assets/title-screen.png", (screen_center_x + 70, screen_center_y + 110),
                          screen_dimensions)
-
             play_levels_rect = render_image(screen, "assets/Play-Levels.png",
                                             (screen_center_x, screen_center_y - 120), (200, 50)).get_rect()
             play_levels_rect.center = (screen_center_x, screen_center_y - 120)
@@ -832,10 +827,12 @@ while game_state != "off":
             quit_rect = render_image(screen, "assets/Quit.png", (screen_center_x, screen_center_y + 230),
                                      (200, 50)).get_rect()
             quit_rect.center = (screen_center_x, screen_center_y + 230)
+            #########################################################
 
             render_message(screen, "Atari Breakout", [screen_center_x, 100], 64)
 
             # Detects if the player has hit any of the buttons and if so, switches the game state
+            #########################################################
             if play_levels_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "level select"
                 score = 0
@@ -860,6 +857,7 @@ while game_state != "off":
             if level_creator_rect.collidepoint(mouse_pos) and clicked:
                 game_state = "level creator"
                 selecting_level_to_edit = True
+            #########################################################
 
         case "win screen" | "lose screen":
             exit_game_end_rect = render_image(screen, "assets/Exit.png",
@@ -880,6 +878,8 @@ while game_state != "off":
                 render_message(screen, f"YOU {game_state[:4].upper()}", screen_center, 64)
 
         case "leaderboard":
+            # retrives scores from the "Endless-High_Scores" file and displays them on the screen
+            #########################################################
             scores = add_high_score(-1)
             message = ""
             for i, num in enumerate(scores):
@@ -887,6 +887,7 @@ while game_state != "off":
             message = message[:len(message) - 1]
             render_message(screen, "High Scores:", (screen_center_x, 100), 64)
             render_message(screen, message, (screen_center_x, screen_center_y - 150), 32)
+            #########################################################
 
             exit_leaderboard_rect = render_image(screen, "assets/Exit.png",
                                               (screen_center_x, 600), (200, 50)).get_rect()
