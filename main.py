@@ -15,6 +15,7 @@ clock = pygame.time.Clock()
 
 # default object values
 bricks = []
+powerups = []
 block_width = screen_dimensions[0] / 8
 block_height = block_width / 3
 powerup_chance = 4      # out of ten
@@ -122,6 +123,48 @@ class Ball:
     # draws the ball on the screen
     def draw(self, surface: pygame.Surface):
         pygame.draw.circle(surface, self.color, [self.x, self.y], ball_radius)
+
+
+class Powerup:
+    def __init__(self, x, y, type):
+        self.width = 10
+        self.x = x - self.width / 2
+        self.y = y - self.width / 2
+        self.type = type
+        self.speed = 5
+        self.rect = pygame.Rect(x, y, self.width, self.width)
+        match type:
+            case "extra ball":
+                self.color = (0, 255, 0)
+            case "long platform":
+                self.color = (0, 0, 255)
+            case _:
+                print("Ruh roh")
+    
+    def collected(self):
+        match self.type:
+            case "extra ball":
+                balls.append(Ball(platform.rect.centerx, platform.rect.centery - platform.height / 2 - ball_radius, 0, -ball_speed))
+            case "long platform":
+                platform.rect.width += 5
+                platform.width += 5
+
+                # if the platform width has increased beyond half of the screen's width, the platform's width is set to half
+                # the screen width
+                if platform.width > screen_dimensions[0] / 2:
+                    platform.set_width(screen_dimensions[0] / 2)
+            case _:
+                print("Ruh roh")
+
+    def update_pos(self):
+        self.y += self.speed
+        self.rect.centery += self.speed
+    
+    def draw(self, surface: pygame.surface):
+        pygame.draw.rect(surface, self.color, [self.x, self.y, self.width, self.width])
+
+    def __str__(self):
+        return f"Powerup: {self.type}, position: ({self.x}, {self.y})"
 
 
 class Platform:
@@ -253,25 +296,11 @@ def get_new_vel(ball, norm_cords, rect, object_hit):
 
 # Takes the coordinates of the platform and decides whether to spawn a powerup using the random module. "long platform"
 # will increase the platform width, and "extra "ball" will spawn another ball at the platforms location
-def spawn_powerup(x_pos, y_pos, speed):
+def spawn_powerup(x_pos, y_pos):
     # determines whether to spawn powerup
     if random.randint(0, 10) > 10 - powerup_chance:
-
-        # randomly chooses which powerup from "powerup_choices" to spawn
-        choice = random.choice(powerup_choices)
-        if choice == "extra ball":
-            # adds a ball to the game at the platform's position
-            balls.append(Ball(x_pos, y_pos - platform.height / 2 - ball_radius, 0, -speed))
-        if choice == "long platform":
-
-            # increases the platform width
-            platform.rect.width += 5
-            platform.width += 5
-
-            # if the platform width has increased beyond half of the screen's width, the platform's width is set to half
-            # the screen width
-            if platform.width > screen_dimensions[0] / 2:
-                platform.set_width(screen_dimensions[0] / 2)
+        
+        powerups.append(Powerup(x_pos, y_pos, random.choice(powerup_choices)))
 
 
 # adds a score to the "Endless-High-Scores" file and organizes the file with the top ten scores from highest to lowest
@@ -613,7 +642,7 @@ while game_state != "off":
                 if keys[pygame.K_e]:
                     current_color = "e"
 
-                # clears screen if user presses "c"a
+                # clears screen if user presses "c"
                 if keys[pygame.K_c]:
                     render_bricks = []
                     edit_brick_placeholders = [["e" for i in range(max_level_height)] for j in range(8)]
@@ -660,6 +689,9 @@ while game_state != "off":
             # updates ball and platform positions, handles collisions, and draws objects on screen
             #########################################################
             platform.player_move(keys)
+            for powerup in powerups:
+                powerup.update_pos()
+                powerup.draw(screen)
             for ball in balls:
                 ball.update_pos()
                 if ball.rect.colliderect(platform.rect):
@@ -670,7 +702,7 @@ while game_state != "off":
                     if brick[0].colliderect(ball.rect):
                         brick_impact.play()
                         collided = True
-                        spawn_powerup(platform.rect.centerx, platform.rect.centery, ball_speed)
+                        spawn_powerup(ball.rect.centerx, ball.rect.centery)
                         ball.handle_rect_bounce(brick[0])
                         if brick in bricks:
                             bricks.remove(brick)
@@ -680,6 +712,15 @@ while game_state != "off":
                         break
                     else:
                         pygame.draw.rect(screen, brick[1], brick[0])
+                
+                for powerup in powerups:
+                    if powerup.rect.colliderect(platform.rect):
+                        powerup.collected()
+                        powerups.remove(powerup)
+                    if powerup.rect.top > screen_dimensions[1]:
+                        powerups.remove(powerup)
+                    
+
                 if ball.y > screen_dimensions[1]:
                     balls.remove(ball)
                 else:
@@ -696,6 +737,7 @@ while game_state != "off":
                 game_state = "pre round"
 
                 balls = [balls[0]]
+                powerups = []
                 if current_round > 10:
                     win.play()
                     game_state = "win screen"
@@ -793,6 +835,7 @@ while game_state != "off":
             if keys[pygame.K_RETURN]:
                 game_state = "round running"
             if keys[pygame.K_SPACE]:
+                scores = add_high_score(total_score)
                 balls = [balls[0]]
                 game_state = "title"
                 loop_music("SoundFiles/menu-background.wav")
