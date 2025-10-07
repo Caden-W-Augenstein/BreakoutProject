@@ -226,6 +226,8 @@ def get_new_vel(ball, norm_cords, rect, object_hit):
     if object_hit == "platform":
         ratio = (rect.left - ball.x) / rect.width * math.pi
         ball.x_vel = -math.cos(ratio) * 2
+        if ball.x_vel == 0:
+            ball.x_vel = .01
     norm_vel_cords = [normalize(ball.x_vel), normalize(ball.y_vel)]
     dist = 0
     for i in range(len(norm_vel_cords)):
@@ -836,6 +838,7 @@ while game_state != "off":
                 game_state = "round running"
             if keys[pygame.K_SPACE]:
                 scores = add_high_score(total_score)
+                powerups = []
                 balls = [balls[0]]
                 game_state = "title"
                 loop_music("SoundFiles/menu-background.wav")
@@ -911,6 +914,7 @@ while game_state != "off":
                 platform.reset()
                 loop_music("SoundFiles/menu-background.wav")
                 game_state = "title"
+                powerups = []
                 balls = [Ball(0, 0, 0, 0), ]
 
             if endless:
